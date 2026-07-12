@@ -182,6 +182,228 @@ This is also why we're building **CryptoHacker** around Solidity: it's the domin
             quizAnswer: "Deployed contract code is generally immutable, and bugs can be exploited publicly with real, often irreversible financial loss",
             xp: 20,
           },
+          {
+            order: 6,
+            title: "Consensus: Proof of Work vs Proof of Stake",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat consensus.md
+
+Nodes need to agree on which chain is the "real" one when multiple valid-looking chains could exist. Two dominant mechanisms:
+
+- **Proof of Work (PoW)** — validators ("miners") compete to solve a computationally expensive puzzle. Whoever solves it first proposes the next block. Expensive hardware + electricity cost is the security: rewriting history means re-doing that work faster than everyone else combined (a "51% attack"), which gets prohibitively expensive as the network grows. Bitcoin uses this.
+
+- **Proof of Stake (PoS)** — validators lock up ("stake") the network's own coin as collateral. The protocol pseudo-randomly selects a validator to propose each block, weighted by stake size. Acting maliciously gets your stake **slashed** (partially destroyed) — security comes from economic risk instead of energy cost. Ethereum switched from PoW to PoS in "The Merge" (2022).
+
+**Question:** In Proof of Stake, what actually discourages a validator from proposing a fraudulent block?`,
+            quizOptions: [
+              "Nothing — PoS has no penalty mechanism",
+              "The computational cost of solving a puzzle",
+              "Their staked collateral can be partially or fully destroyed (\"slashed\") if they're caught acting maliciously",
+              "They get banned from the internet",
+            ],
+            quizAnswer: "Their staked collateral can be partially or fully destroyed (\"slashed\") if they're caught acting maliciously",
+            xp: 20,
+          },
+          {
+            order: 7,
+            title: "Forks: soft vs hard",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat forks.md
+
+When a blockchain's rules change, nodes need to upgrade — but not everyone upgrades at once, which creates a **fork**:
+
+- **Soft fork** — a backwards-compatible rule *tightening*. Old (non-upgraded) nodes still accept blocks produced under the new rules, because the new rules are a subset of what old nodes already allow. The chain stays unified.
+- **Hard fork** — a backwards-*incompatible* change. Old nodes reject blocks that follow the new rules (or vice versa), permanently splitting the network into two separate chains if not everyone upgrades. Ethereum's split into Ethereum and Ethereum Classic (after the 2016 DAO hack was reversed via a hard fork) is the canonical example.
+
+**Question:** Why does a hard fork risk permanently splitting a blockchain into two separate networks, while a soft fork doesn't?`,
+            quizOptions: [
+              "Hard forks always require a new cryptocurrency to be created",
+              "Old, non-upgraded nodes reject the new rules as invalid, so if enough nodes don't upgrade, two mutually incompatible chains persist side by side",
+              "Soft forks are reversible and hard forks are not",
+              "There's no real difference, just terminology",
+            ],
+            quizAnswer: "Old, non-upgraded nodes reject the new rules as invalid, so if enough nodes don't upgrade, two mutually incompatible chains persist side by side",
+            xp: 20,
+          },
+          {
+            order: 8,
+            title: "Layer 2 scaling",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat layer2.md
+
+Ethereum mainnet ("Layer 1") can only process a limited number of transactions per second, and each one costs gas. **Layer 2** networks handle most transaction processing off the main chain, then post a compressed summary (or proof) back to Layer 1 for final security — cheaper and faster, while still inheriting Ethereum's security guarantees.
+
+Two common approaches:
+
+- **Optimistic rollups** (e.g. Arbitrum, Optimism) — assume transactions are valid by default, but allow a challenge window where anyone can submit fraud proofs if something's wrong.
+- **ZK-rollups** (e.g. zkSync, Starknet) — bundle transactions and generate a cryptographic proof (a zero-knowledge proof) that they were executed correctly, verified on Layer 1 immediately, no challenge window needed.
+
+**Question:** What's the fundamental difference in how optimistic rollups and ZK-rollups establish that off-chain transactions were valid?`,
+            quizOptions: [
+              "There is no difference, they're the same technology with different names",
+              "Optimistic rollups assume validity and allow a challenge period for fraud proofs; ZK-rollups generate a cryptographic proof of correctness upfront, with no challenge period",
+              "ZK-rollups are slower but cheaper",
+              "Optimistic rollups don't use Layer 1 at all",
+            ],
+            quizAnswer: "Optimistic rollups assume validity and allow a challenge period for fraud proofs; ZK-rollups generate a cryptographic proof of correctness upfront, with no challenge period",
+            xp: 25,
+          },
+          {
+            order: 9,
+            title: "Stablecoins",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat stablecoins.md
+
+Most cryptocurrencies are volatile, which makes them awkward for everyday payments or as a unit of account in DeFi. **Stablecoins** aim to hold a steady value (usually pegged to $1 USD) via one of a few mechanisms:
+
+- **Fiat-collateralized** — a company holds $1 in a bank account for every token issued (e.g. USDC, USDT). Requires trusting the issuer's audits/reserves.
+- **Crypto-collateralized** — backed by *more* crypto value than the stablecoin issued (over-collateralized), to absorb price swings in the collateral (e.g. DAI, backed by ETH and other assets locked in smart contracts).
+- **Algorithmic** — no direct collateral; the peg is maintained by algorithmically expanding/contracting supply based on market price. Historically the least reliable — TerraUSD's 2022 collapse (losing its peg entirely, wiping out ~$40B) is the canonical cautionary tale.
+
+**Question:** Why are algorithmic stablecoins generally considered riskier than collateralized ones?`,
+            quizOptions: [
+              "They are illegal in most countries",
+              "Their peg relies on market incentives and supply/demand mechanics rather than real collateral backing every token, so a loss of confidence can trigger a self-reinforcing collapse (a \"death spiral\")",
+              "They can only be used on one blockchain",
+              "They have higher transaction fees",
+            ],
+            quizAnswer: "Their peg relies on market incentives and supply/demand mechanics rather than real collateral backing every token, so a loss of confidence can trigger a self-reinforcing collapse (a \"death spiral\")",
+            xp: 25,
+          },
+          {
+            order: 10,
+            title: "DeFi in one paragraph",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat defi.md
+
+**DeFi** (Decentralized Finance) recreates financial services — lending, borrowing, trading, earning yield — as smart contracts instead of banks or brokerages. Nobody holds your funds on your behalf by default; you interact directly with code, and (ideally) that code's logic is fully auditable on-chain.
+
+Core primitives you'll build later in this course:
+- **AMMs** (Automated Market Makers) — let you swap tokens against a pool of liquidity instead of matching buyers/sellers directly.
+- **Lending protocols** — let you deposit an asset to earn interest, or borrow against collateral you've deposited.
+- **Staking** — lock up tokens to earn rewards, often tied to securing a network or providing liquidity.
+
+The tradeoff for removing intermediaries: you take on smart contract risk directly. A bug in the code *is* the bank's vault door being left open — which is exactly why the Security track later in this course exists.
+
+**Question:** What is the core tradeoff DeFi makes compared to traditional finance?`,
+            quizOptions: [
+              "DeFi is strictly safer because there's no company that can go bankrupt",
+              "DeFi removes trusted intermediaries in favor of direct interaction with smart contract code, shifting risk from counterparty/institutional risk to smart contract correctness risk",
+              "DeFi only works with stablecoins",
+              "DeFi requires government approval to use",
+            ],
+            quizAnswer: "DeFi removes trusted intermediaries in favor of direct interaction with smart contract code, shifting risk from counterparty/institutional risk to smart contract correctness risk",
+            xp: 20,
+          },
+          {
+            order: 11,
+            title: "DAOs",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat dao.md
+
+A **DAO** (Decentralized Autonomous Organization) is an organization whose rules and treasury are governed by smart contracts and member voting instead of a traditional management hierarchy. Token holders typically propose changes and vote, with outcomes executed automatically on-chain if a proposal passes.
+
+The name is aspirational more than literal in practice: most real DAOs still rely on off-chain discussion (forums, Discord) before an on-chain vote, and many have some multisig or admin key for emergency actions — full "autonomy" without any human intervention is rare and often risky (a purely automatic system can't respond to genuinely novel situations, like the 2016 DAO hack, which needed human judgment to resolve).
+
+**Question:** Why do most real-world DAOs still retain some human/multisig control rather than being fully autonomous?`,
+            quizOptions: [
+              "Because DAOs are illegal without human oversight",
+              "Fully automated systems can't exercise judgment in unforeseen situations (like responding to an active exploit), so a safety valve is usually kept for emergencies",
+              "Smart contracts cannot hold funds without a human co-signer",
+              "It's purely a marketing choice with no technical reason",
+            ],
+            quizAnswer: "Fully automated systems can't exercise judgment in unforeseen situations (like responding to an active exploit), so a safety valve is usually kept for emergencies",
+            xp: 20,
+          },
+          {
+            order: 12,
+            title: "Oracles: getting real-world data on-chain",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat oracles.md
+
+Smart contracts can only see data that's already on their own blockchain — they can't natively fetch a stock price, a sports score, or even the weather. An **oracle** is a service that brings external data on-chain, typically by having multiple independent parties report a value, aggregating them (e.g. taking a median) to resist any single reporter lying.
+
+This matters enormously for security: if a lending protocol trusts a single, easily-manipulated price source, an attacker can artificially move that price (e.g. via a large trade in a low-liquidity pool) just long enough to drain the protocol — a class of exploit called **oracle manipulation**, responsible for tens of millions of dollars in DeFi losses.
+
+**Question:** Why is relying on a single, easily-manipulated price source dangerous for a smart contract?`,
+            quizOptions: [
+              "It isn't — a single source is more reliable",
+              "An attacker can artificially move that single price source (e.g. via a large trade) just long enough to trick the contract into a favorable exchange, then reverse it — a well-known oracle manipulation exploit",
+              "Single-source oracles are always more accurate",
+              "Smart contracts automatically detect fake prices",
+            ],
+            quizAnswer: "An attacker can artificially move that single price source (e.g. via a large trade) just long enough to trick the contract into a favorable exchange, then reverse it — a well-known oracle manipulation exploit",
+            xp: 25,
+          },
+          {
+            order: 13,
+            title: "Rug pulls and common scams",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat scams.md
+
+As a hacker, recognizing scam patterns matters as much as writing secure code. Common ones:
+
+- **Rug pull** — developers hype a token/project, collect funds (often via a liquidity pool), then drain the liquidity and disappear, leaving holders with a worthless token.
+- **Honeypot contract** — a token contract written so that buying works fine, but selling is silently blocked (e.g. via a hidden condition in \`transfer\`) — you can only lose money, never take profit.
+- **Fake token approval phishing** — a malicious site tricks you into calling \`approve()\` granting it unlimited spending rights over your tokens, then drains your wallet whenever it chooses, without needing your private key at all.
+
+**Question:** How does a phishing site drain a wallet through a fake "approve" transaction, without ever obtaining the victim's private key?`,
+            quizOptions: [
+              "It doesn't need approval at all — it just needs your public address",
+              "By tricking the victim into signing an approve() transaction that grants the attacker's contract permission to move their tokens whenever it wants, no private key required afterward",
+              "It exploits a bug in the blockchain itself",
+              "It requires the victim to type their private key into a form",
+            ],
+            quizAnswer: "By tricking the victim into signing an approve() transaction that grants the attacker's contract permission to move their tokens whenever it wants, no private key required afterward",
+            xp: 25,
+          },
+          {
+            order: 14,
+            title: "NFTs beyond profile pictures",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat nfts.md
+
+An **NFT** (Non-Fungible Token) represents ownership of something unique — each token has its own ID and isn't interchangeable 1-for-1 with another, unlike a fungible token (one USDC is identical to any other USDC). "Non-fungible" just means "not mutually interchangeable," not "must be profile-picture art":
+
+- **Digital ownership/provenance** — proving who owns a specific in-game item, ticket, or piece of art, and its full ownership history.
+- **Access tokens** — holding a specific NFT can gate access to a community, event, or software feature.
+- **Real-world asset representation** — tokenizing a deed, an invoice, or a share of a physical asset, with the NFT as the on-chain record of ownership.
+
+Crucially: the NFT's metadata (image, name, description) is often stored **off-chain** (a URL, or on IPFS) with only a pointer stored on-chain — meaning if that off-chain storage disappears, the "NFT" itself still exists on-chain, but what it's supposed to represent visually may not.
+
+**Question:** What's a key risk of an NFT whose metadata is hosted on a centralized, off-chain URL rather than something like IPFS?`,
+            quizOptions: [
+              "The NFT will stop being transferable",
+              "If that URL goes down or the hosting company shuts down, the on-chain token still exists but the image/metadata it's supposed to represent may become permanently unavailable",
+              "The blockchain will reject the transaction",
+              "There is no risk, on-chain and off-chain storage are equivalent",
+            ],
+            quizAnswer: "If that URL goes down or the hosting company shuts down, the on-chain token still exists but the image/metadata it's supposed to represent may become permanently unavailable",
+            xp: 20,
+          },
+          {
+            order: 15,
+            title: "Gas fees in practice",
+            kind: "QUIZ",
+            instructions: `## root@network:~$ cat gas-in-practice.md
+
+Building on Chapter 4's gas basics: in practice, gas price fluctuates with network demand, similar to surge pricing. Ethereum uses a fee model (EIP-1559) with two parts:
+
+- **Base fee** — algorithmically adjusts block-to-block based on how full the previous block was, and is **burned** (destroyed, not paid to anyone).
+- **Priority fee ("tip")** — an optional extra amount you add to incentivize a validator to include your transaction sooner, paid directly to the validator.
+
+This is why the same contract call can cost very different amounts at different times of day — it's not the contract getting more expensive, it's network demand changing the price of the same fixed amount of computation.
+
+**Question:** Why does the same smart contract function call sometimes cost dramatically more ETH in gas fees at one time versus another?`,
+            quizOptions: [
+              "The contract's code changes automatically over time",
+              "Gas price fluctuates with network demand (how full recent blocks are), so the same fixed amount of computational \"gas units\" costs a different amount of ETH depending on current demand",
+              "Older contracts always cost more gas",
+              "Gas fees are fixed and never change",
+            ],
+            quizAnswer: "Gas price fluctuates with network demand (how full recent blocks are), so the same fixed amount of computational \"gas units\" costs a different amount of ETH depending on current demand",
+            xp: 20,
+          },
         ],
       },
     ],
