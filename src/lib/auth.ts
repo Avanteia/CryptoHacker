@@ -32,10 +32,18 @@ export const authOptions: NextAuthOptions = {
     newUser: "/lessons",
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    }),
+    // NextAuth's Google provider throws ("client_id is required") the moment
+    // it's invoked without real credentials, so it's only registered when
+    // both env vars are actually set — otherwise email/password auth still
+    // works but the "continue with Google" button has nothing to talk to.
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
     CredentialsProvider({
       name: "credentials",
       credentials: {

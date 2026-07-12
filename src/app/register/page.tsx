@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { signIn, getProviders } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -13,6 +13,11 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  useEffect(() => {
+    getProviders().then((providers) => setGoogleEnabled(!!providers?.google));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,12 +90,14 @@ export default function RegisterPage() {
             {loading ? "provisioning..." : "./create_account"}
           </button>
         </form>
-        <button
-          onClick={() => signIn("google", { callbackUrl: "/lessons" })}
-          className="mt-4 w-full rounded border border-term-border py-2 text-sm text-term-muted hover:border-term-cyan hover:text-term-cyan"
-        >
-          continue_with_google()
-        </button>
+        {googleEnabled && (
+          <button
+            onClick={() => signIn("google", { callbackUrl: "/lessons" })}
+            className="mt-4 w-full rounded border border-term-border py-2 text-sm text-term-muted hover:border-term-cyan hover:text-term-cyan"
+          >
+            continue_with_google()
+          </button>
+        )}
         <p className="mt-6 text-center text-sm text-term-muted">
           already a hacker?{" "}
           <Link href="/login" className="text-term-cyan hover:underline">

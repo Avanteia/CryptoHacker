@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { rankForXp } from "@/lib/xp";
 import TerminalWindow from "@/components/ui/TerminalWindow";
 
+// Rankings change on every completed chapter — this must never be baked in
+// at build time (which would also make the build fail if the DB is
+// unreachable during the Vercel build step).
+export const dynamic = "force-dynamic";
+
 export default async function LeaderboardPage() {
   const users = await prisma.user.findMany({
     orderBy: { xp: "desc" },
