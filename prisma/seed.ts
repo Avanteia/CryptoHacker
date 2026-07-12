@@ -429,19 +429,180 @@ This is why the same contract call can cost very different amounts at different 
             order: 1,
             title: "Contracts and the pragma",
             kind: "CODE",
-            instructions: `## Chapter 1 — Your first contract
+            instructions: `## Chapter 1 — Your First Contract: Pragmas, Compilers, and the Anatomy of a Solidity File
 
-Solidity source files start with a **version pragma**, declaring which compiler versions the code is safe to compile with.
+### 1.1 Welcome to the other side of the terminal
 
-Then, everything lives inside a **contract** block — think of it like a class in other languages.
+Every course you've taken before this one probably started with "hello world." This one starts with a *machine that holds money*. That distinction matters more than it sounds like it should, and it's worth sitting with for a moment before you type a single character of Solidity.
+
+When you write a function in Python, JavaScript, or Java, and that function has a bug, the cost of the bug is usually bounded: a crashed process, a bad API response, a support ticket. You redeploy, you patch, you move on. The blast radius is contained by the fact that your code runs on infrastructure *you* control, and you can change it whenever you want.
+
+None of that is true here. Once a smart contract is deployed to a public blockchain like Ethereum, its bytecode is — by default — permanent. There is no SSH session into a live contract. There is no hotfix branch. If the contract holds funds and the code has a flaw, the flaw is now a public, standing invitation, visible to anyone with a block explorer and the patience to read bytecode, and it will not fix itself. This is why the entire second half of this course is dedicated to security: not as an afterthought bolted onto "real" programming, but as the central discipline of the craft.
+
+This chapter is deliberately slow. We're going to write four lines of actual code by the end of it — a pragma statement and an empty contract declaration — and that might feel like an absurdly small amount of code for a chapter this long. But those four lines encode a surprising number of decisions, and understanding *why* each one exists will save you from a specific category of production incident that has genuinely cost real projects real money. We're not skipping ahead to "interesting" content and treating the boilerplate as filler. The boilerplate *is* the content, this chapter.
+
+### 1.2 A short, opinionated history of why Solidity exists
+
+Before Ethereum, Bitcoin already proved that a decentralized, trustless ledger was possible. Bitcoin's scripting language, however, is deliberately limited — non-Turing-complete, no loops, designed narrowly for validating that a transaction is allowed to spend a particular output. This was a conscious security tradeoff: a limited language has a much smaller space of things that can go catastrophically wrong.
+
+Ethereum's founding insight (largely credited to Vitalik Buterin, first described in the Ethereum whitepaper in late 2013) was to generalize this: instead of a blockchain that could only move a native currency around according to fixed rules, why not a blockchain that could run *arbitrary programs*, with its own persistent storage, and let those programs hold and move value according to whatever logic their authors wrote? That arbitrary-program-execution environment is the **Ethereum Virtual Machine**, or **EVM** — a sandboxed, deterministic, gas-metered computer that every full node on the network runs identically, so that everyone agrees on the result of every computation.
+
+Solidity, first proposed by Gavin Wood (also an Ethereum co-founder) in 2014 and developed further by Christian Reitwiessner, Alex Beregszaszi, and others, was designed as a high-level language that compiles down to EVM bytecode — the actual instructions the EVM executes. It deliberately borrows syntax from JavaScript, C++, and Python so that developers coming from mainstream languages would feel a sense of familiarity, while introducing concepts that have no real analog in traditional programming: gas costs for every operation, a strict distinction between where data lives (storage vs. memory vs. calldata — you'll meet this properly in Chapter 12), and a contract-oriented structure where "classes" (contracts) are also, simultaneously, live accounts with their own balance and address on a public ledger.
+
+It's worth naming a few alternatives that exist in the same space, so you understand why Solidity remains the default choice for this course and for the overwhelming majority of production Ethereum-ecosystem contracts:
+
+- **Vyper** — a Python-inspired language for the EVM, deliberately more restrictive than Solidity (no modifiers, no inheritance, no inline assembly) in the name of auditability. Some serious protocols use it specifically *because* it's harder to write certain classes of bugs in.
+- **Move** (used by Aptos and Sui) — a newer language designed around a "resource" type system that makes it structurally difficult to accidentally duplicate or destroy a token, at the language level rather than via convention.
+- **Rust** (used for Solana programs, and for ink! contracts on Substrate-based chains) — leverages Rust's existing memory-safety guarantees, applied to a different underlying execution model than the EVM entirely.
+
+You'll likely encounter all three of these if you stay in this industry for any length of time. But Solidity's dominance on Ethereum and EVM-compatible chains (Polygon, Arbitrum, Optimism, BNB Chain, Avalanche's C-Chain, and dozens more) means it's the highest-leverage language to master first — the largest existing codebase to read, the largest set of tooling (Hardhat, Foundry, OpenZeppelin) built around it, and the largest number of both jobs and, frankly, historical exploits to learn from.
+
+### 1.3 What a \`.sol\` file actually is, mechanically
+
+A Solidity source file (conventionally given a \`.sol\` extension) is plain UTF-8 text. There's no special binary format, no IDE-specific project file required to make it valid — you could write one in Notepad and it would compile identically to one written in a fully-configured VSCode setup with the Solidity extension, linting, and autoformat-on-save. What differs between "a Solidity file someone wrote casually" and "a Solidity file a serious team ships to mainnet" isn't the mechanics of the file format — it's everything *around* it: the test suite, the static analysis tooling, the deployment scripts, the audit trail. We'll get to all of that. But it starts with understanding the plain text you're about to write.
+
+A \`.sol\` file is compiled by the **Solidity compiler**, commonly called \`solc\` (its actual binary name, whether you invoke it directly, through Hardhat, through Foundry's \`forge build\`, or through the browser-based Remix IDE). The compiler's job, at a high level, is:
+
+1. **Parse** the source text into an abstract syntax tree (AST) — a structured representation of what you wrote, independent of formatting/whitespace.
+2. **Type-check** that tree — verifying that a \`uint\` is never silently treated as a \`string\`, that a function you're calling actually exists with that name and argument types, that visibility rules aren't violated, and dozens of other static checks.
+3. **Generate EVM bytecode** — the actual sequence of low-level opcodes (\`PUSH1\`, \`SSTORE\`, \`CALL\`, and so on — there are about 140 of these) that will run on-chain.
+4. **Generate the ABI** (Application Binary Interface) — a JSON description of every externally-callable function and event, used by anything that wants to interact with your contract without having your source code (a frontend, another contract, a block explorer).
+
+You'll interact with steps 3 and 4 directly later in this course — the ABI in particular becomes essential once you build a frontend in the Web3 integration track. For now, the important thing to internalize is: **the code you write is not what runs**. What runs is bytecode, generated deterministically from your source by a specific version of the compiler. And that word — *specific version* — is exactly what brings us to the pragma.
+
+### 1.4 The pragma statement: what it actually does (and, just as importantly, what it does *not* do)
+
+Every Solidity file conventionally begins with a line like this:
 
 \`\`\`solidity
 pragma solidity >=0.5.0 <0.9.0;
+\`\`\`
 
+Let's take this apart piece by piece, because almost every word here is doing real work.
+
+**\`pragma\`** is a keyword borrowed conceptually from C/C++, where \`#pragma\` directives give the compiler special, compiler-specific instructions that aren't part of the "normal" language grammar. In Solidity, \`pragma solidity\` is specifically a **version pragma** — it tells the compiler "only compile this file if your version number satisfies this constraint."
+
+Here's the part that trips up almost every newcomer, so read this sentence twice: **the pragma does not select or download a compiler version. It does not change how your code behaves. It is purely a guard clause that causes compilation to fail loudly if the version of \`solc\` currently being invoked doesn't match what the code was written and audited against.**
+
+Why does this guard clause exist at all, and why does it matter enough to be the very first line of every file? Because Solidity, especially in its early years (roughly 0.4.x through 0.7.x), made frequent **breaking changes** between versions — not just new features, but changes to the default behavior of existing syntax. Here are three real historical examples, because abstract warnings about "breaking changes" don't stick the way concrete ones do:
+
+- **Automatic overflow/underflow checks.** Before Solidity 0.8.0 (released December 2020), arithmetic operations like \`a - b\` or \`a + b\` on unsigned integers would silently *wrap around* on overflow or underflow — subtracting 1 from a \`uint\` currently at 0 would not throw an error, it would silently become the maximum representable value (\`2^256 - 1\`). This was a genuinely dangerous default, and multiple real-world exploits (including a notable hack of the BeautyChain / BEC token in 2018, which lost the token essentially all its value) directly exploited this behavior. Solidity 0.8.0 flipped the default: arithmetic now reverts automatically on overflow/underflow, and the old wrap-around behavior requires explicitly opting in via an \`unchecked { ... }\` block. If you compiled the exact same source file with a pre-0.8.0 compiler versus a post-0.8.0 compiler, you would get contracts with **meaningfully different security properties**, despite identical source code. The pragma exists precisely so this kind of silent, catastrophic mismatch between "what I audited" and "what actually got deployed" cannot happen without at least a compiler error forcing you to look at it.
+
+- **Constructor syntax.** Prior to Solidity 0.4.22, constructors were declared as a function with the *same name as the contract* — \`contract Foo { function Foo() public { ... } }\`. This turned out to be a real security hazard: if a developer renamed their contract (say, from \`Foo\` to \`FooV2\`) but forgot to rename the constructor function to match, the "constructor" silently became just a regular public function, callable by *anyone, at any time, not just at deployment* — including potentially re-initializing state or reassigning ownership after the contract was already live. This exact bug is what happened to the **Rubixi** contract in 2016: a rename left a function called \`Fibonacci\` (the contract's original, previous name) as a leftover public function that anyone could call to become the contract owner. Solidity 0.4.22 introduced the dedicated \`constructor(...)\` keyword specifically to make this class of bug structurally impossible — a constructor is no longer tied to a name that can be typo'd or left stale during a rename.
+
+- **Explicit visibility requirements.** Early Solidity allowed you to omit a function's visibility specifier, in which case it defaulted to \`public\`. This meant a developer intending to write an internal helper function, but forgetting to type \`private\` or \`internal\`, would accidentally expose it to the entire world — callable by any address, with whatever side effects that entailed. Later versions made explicit visibility mandatory precisely to eliminate "I forgot to lock this down" as a possible bug category.
+
+Notice the pattern across all three examples: each change was made specifically to **remove a way developers were routinely shooting themselves in the foot**, at the cost of breaking backward compatibility. This is the core tension the pragma is designed to manage: language safety improves over time, but improvements that change default behavior can silently alter a codebase's security properties if you're not paying attention to *which* compiler is actually being used.
+
+### 1.5 Reading a version constraint like a sentence, not a magic incantation
+
+Let's return to our example and actually parse it as English, not just as syntax to memorize:
+
+\`\`\`solidity
+pragma solidity >=0.5.0 <0.9.0;
+\`\`\`
+
+This reads as: "Compile this file only with a Solidity compiler whose version is **greater than or equal to 0.5.0**, **and** less than 0.9.0." It's a range, expressed with two comparison operators joined implicitly by "and."
+
+Solidity version numbers follow (loosely) **semantic versioning** — \`MAJOR.MINOR.PATCH\`:
+
+- A **patch** bump (e.g. \`0.8.19\` → \`0.8.20\`) is meant to be a bug fix to the compiler itself, with no intentional language changes.
+- A **minor** bump (e.g. \`0.7.x\` → \`0.8.x\`) — and note that because Solidity hasn't yet reached \`1.0.0\`, what would normally be considered "major" changes are, by convention, expressed as minor version bumps — is where the breaking changes we just discussed happen.
+- Solidity has never released a \`1.0.0\`. As of this writing, \`0.8.x\` is the actively maintained line, well over three years and dozens of patch releases into its life, and it's genuinely unclear if or when a \`1.0.0\` will happen — the language has stabilized enough in practice that the version number itself has stopped being the primary signal of maturity.
+
+You'll see several common patterns for expressing pragma constraints in the wild, each expressing a slightly different intent:
+
+\`\`\`solidity
+pragma solidity 0.8.19;              // Locked to an exact version — no flexibility at all.
+pragma solidity ^0.8.19;             // "Compatible with 0.8.19" — allows 0.8.20, 0.8.21, etc.,
+                                      // but NOT 0.9.0 (the caret only allows patch/minor bumps
+                                      // within the same leading non-zero digit after the first).
+pragma solidity >=0.8.0 <0.9.0;      // Explicit range — functionally very similar to ^0.8.0,
+                                      // but the intent is spelled out rather than implied.
+pragma solidity >=0.5.0 <0.9.0;      // A wide range — our example. This tells the compiler
+                                      // "I believe this code is safe across a broad span of
+                                      // versions," which is a much stronger (and riskier) claim.
+\`\`\`
+
+Here's a genuinely important, easy-to-miss subtlety about the caret (\`^\`) operator specifically, because it's the one most tutorials wave past: \`^0.8.19\` does **not** mean "0.8.19 or later, forever." It means "0.8.19 or later, up to (but not including) the next MINOR version bump" — and because Solidity is still pre-1.0, the caret treats the *minor* version number the way most semver-based ecosystems treat the *major* number. So \`^0.8.19\` allows \`0.8.20\` through \`0.8.999...\` but explicitly excludes \`0.9.0\`. If Solidity were already past 1.0 (say, hypothetically at \`1.4.2\`), \`^1.4.2\` would allow anything up to but not including \`2.0.0\`. This inconsistency (pre-1.0 packages treating minor bumps as breaking) is actually standard semver behavior, not a Solidity-specific quirk — it shows up identically in npm's semver ranges — but it catches people off guard the first time they see it, because intuitively \`^0.8.19\` "looks like" it should behave the same way \`^1.8.19\` would.
+
+### 1.6 So why did *we* choose \`>=0.5.0 <0.9.0\` for this course's examples?
+
+You might reasonably ask: if narrow, pinned versions are safer, why does so much of this course's example code use a deliberately wide range?
+
+The honest answer is pedagogical, not a production best practice: a wide range means the exact same starter code compiles whether you're running an older locally-cached compiler or the very latest one, which matters when hundreds of thousands of learners across different environments are running this code, and we don't want version-mismatch friction getting in the way of learning the actual concept a given chapter is teaching. **This is explicitly not what you should do in a real, production, audited codebase.** In professional work — and we will change our convention starting a few chapters from now once you're comfortable with the basics — you want either:
+
+\`\`\`solidity
+pragma solidity 0.8.24;   // exact pin — the audited version, full stop, nothing else compiles this
+\`\`\`
+
+or, more commonly in modern tooling-managed projects,
+
+\`\`\`solidity
+pragma solidity ^0.8.24;  // "this minor line, patches only" — a defensible middle ground
+\`\`\`
+
+Why does this matter enough to spend a paragraph on? Because an audit — the process where a security firm manually and automatically reviews your contract for vulnerabilities before mainnet deployment, which we'll cover properly in the Security track — is performed against a **specific compiler version producing specific bytecode**. If your pragma allows a wide range and your deployment pipeline happens to pick up a different compiler version than the one that was actually audited, you have, in a very real sense, deployed *unaudited* code, even though the source text is identical to what was reviewed. This has happened to real teams. The fix is cheap (pin your version, or narrow the range, once you're past the learning phase) and the cost of not doing it is not.
+
+### 1.7 The anatomy of a \`contract\` declaration
+
+With the pragma out of the way, let's look at the second piece of this chapter's code:
+
+\`\`\`solidity
 contract HackerFactory {
 
 }
 \`\`\`
+
+The \`contract\` keyword introduces a new contract type — conceptually similar to a \`class\` in Java, C++, or Python, but with two properties that have no real analog in those languages:
+
+1. **A deployed contract has its own Ethereum address**, distinct from any user's wallet address, generated deterministically from the deploying account's address and its transaction nonce (or, for a specific advanced deployment pattern called \`CREATE2\` which we'll meet in the upgradeable-proxies track much later in this course, from a hash of the contract's bytecode and a chosen salt value — allowing you to *predict* a contract's future address before deploying it).
+
+2. **A deployed contract has its own balance**, in the network's native currency (ETH, on Ethereum mainnet), exactly like a wallet does. A contract can receive ETH (subject to having a payable function, \`receive()\`, or \`fallback()\`, which you'll implement properly in Chapter 11 of this track), hold it indefinitely, and send it elsewhere according to whatever logic its functions implement.
+
+This is the conceptual leap that makes smart contracts fundamentally different from "a class that runs on a server somewhere": **the contract itself is a first-class economic actor on the network**, not just a passive piece of logic invoked by some other account. When we write \`HackerFactory\`'s logic over the coming chapters, we're not writing a service that manages hackers stored in a database somewhere — we're writing an autonomous, always-on entity that lives at a specific address, forever (or until explicitly self-destructed, a mechanism we'll examine critically — and mostly warn you away from — in the security track, since Ethereum's \`SELFDESTRUCT\` opcode has itself changed behavior significantly as of the Cancun/Dencun upgrade in 2024).
+
+An empty contract body, as we have here, is completely valid Solidity. It compiles to a small amount of bytecode (mostly boilerplate for the EVM's own bookkeeping) and is deployable — you'd get a real contract address on a real network, holding zero state and offering zero callable functions, but genuinely, permanently existing as an on-chain entity. We're starting here specifically so that in the next chapter, when we add our first state variable, you can appreciate that we're adding it to something that was already a complete, valid, deployable unit — state and behavior get layered on top of a minimal, working foundation, one deliberate addition at a time, which is exactly the pedagogical arc this entire track follows.
+
+### 1.8 Naming conventions, and why "HackerFactory" specifically
+
+You'll notice we're using \`PascalCase\` (also called \`UpperCamelCase\`) for our contract name: \`HackerFactory\`, not \`hackerFactory\` or \`hacker_factory\`. This isn't arbitrary — it's the convention laid out in the **official Solidity Style Guide** (part of the language's own documentation, analogous to Python's PEP 8), and it's followed with near-total consistency across the ecosystem: OpenZeppelin's contracts (\`ERC20\`, \`Ownable\`, \`AccessControl\`), Uniswap's core contracts (\`UniswapV2Pair\`, \`UniswapV3Pool\`), and essentially every serious codebase you'll read follows this same convention for contract, library, and interface names. Function and variable names, by contrast, use \`camelCase\` (\`createRandomHacker\`, \`dnaModulus\`) — you'll see this distinction reinforced constantly across this course precisely so it becomes muscle memory before you're reading unfamiliar production code and need to instantly parse "is this a type name or a variable name" from casing alone, the way experienced developers in any language do without consciously thinking about it.
+
+As for the "Factory" naming pattern specifically: a **factory** is a well-established software design pattern (not Solidity-specific — you'll find it in Java, C#, and plenty of other object-oriented languages) referring to a piece of code whose job is to *create instances of something else*, encapsulating the creation logic so callers don't need to know the details of how a new instance gets built. Our \`HackerFactory\` contract creates new \`Hacker\` entries (you'll define that struct in Chapter 4) — it's not managing one hacker, it's the machinery that produces many, which is exactly the semantic "Factory" is meant to communicate to anyone reading your code for the first time. Good naming in smart contract development matters more than in most software, precisely because the code is public and permanent — a well-named contract on a block explorer, even one you've never seen the source of before, tells a story about its purpose before you've read a single function.
+
+### 1.9 A brief detour: what "compiling" your homework actually triggers, end to end
+
+Since you'll be clicking "Check Answer" throughout this course, it's worth demystifying exactly what happens when you do, so the feedback you get feels like a real compiler talking to you rather than an opaque grading script:
+
+1. Your code, along with a set of **validation rules** specific to this chapter, gets sent to our backend.
+2. Rather than running a full Solidity compilation on every keystroke (which would be slow, and honestly unnecessary for verifying conceptual understanding at this stage of the course), early chapters check your code against structural rules — does it contain the right keywords, in the right order, matching the right patterns — verifying you've expressed the *specific concept* the chapter is teaching, the same way a human reviewer glancing at your code would check for the presence of a specific construct before diving deeper.
+3. Later in this course, once you're working with fuller contracts, we introduce genuine compilation and even local test-network deployment, so you experience the exact same \`solc\` compiler, the exact same error messages, and the exact same gas cost feedback that you'd get running Hardhat or Foundry locally on your own machine — because that muscle memory of reading a real compiler error is something you need before you're working unsupervised.
+
+For *this* chapter specifically, the validation is checking for two things: the presence of the pragma statement, and a \`contract HackerFactory { ... }\` declaration with that exact name. Get both right, and you'll see \`ACCESS GRANTED\`.
+
+### 1.10 Common mistakes at this exact stage (and why each one happens)
+
+Having taught this exact concept to a lot of newcomers, here are the mistakes that show up most often at this stage, and — more usefully than just "here's what not to do" — *why* each one tends to happen, so you can recognize the underlying instinct in yourself before it produces a bug:
+
+- **Forgetting the semicolon after the pragma.** Solidity, like C-family languages, is not whitespace-sensitive but *is* semicolon-terminated for most statements. Coming from a language with more forgiving syntax (or from writing a lot of Markdown/prose, which this very page is full of!) makes this an extremely easy slip. The compiler error you'd get here is unambiguous (\`ParserError: Expected ';'\`), which is exactly the kind of fast, clear feedback loop that makes learning a strict language less painful than it sounds.
+
+- **Misnaming the contract to not exactly match what a caller expects.** Solidity contract names are case-sensitive and must match exactly wherever they're referenced — in imports, in inheritance declarations (\`contract Foo is Bar\`), and, crucially for our purposes, in how tooling (and our own validator) identifies which contract in a file is the "main" one being deployed. A contract named \`Hackerfactory\` (lowercase \`f\`) is a *completely different, valid identifier* from \`HackerFactory\` — Solidity won't warn you, because as far as the compiler is concerned, you've simply chosen a different (also valid) name.
+
+- **Wrapping the contract body in the wrong bracket style, or forgetting to close it.** This is more of a general programming hazard than something Solidity-specific, but it's worth naming because mismatched braces produce a *cascading* error in most compilers — the first error message you see is often not the actual location of your mistake, but somewhere much later in the file where the parser finally gave up trying to make sense of an already-malformed structure. When you get a confusing error message later in this course, and it doesn't seem to correspond to anything wrong on the line it's pointing at, checking your braces one scope up is a genuinely useful first debugging instinct.
+
+- **Assuming the pragma "installs" or "selects" a compiler**, which we addressed directly in section 1.4, but it's worth restating because it's the single most common conceptual misunderstanding at this stage: nothing about the pragma line causes any software to be downloaded, installed, or configured. It is purely a compile-time assertion, checked against whatever compiler happens to actually be invoked by your tooling (Hardhat, Foundry, Remix, or — in this course — our backend's validator).
+
+### 1.11 A note on reading Solidity code you didn't write
+
+Starting in this very chapter, and continuing for the rest of your career if you stay in this field, you'll spend far more time *reading* Solidity than writing it from scratch — reviewing a colleague's pull request, auditing a third-party contract before integrating with it, or investigating why a mainnet contract is behaving unexpectedly by reading its verified source directly off a block explorer like Etherscan. A skill worth deliberately building from day one: whenever you look at any Solidity file, *before* reading a single function, glance at the top three things — the pragma (what compiler behavior can I assume), the contract's inheritance list if any (\`contract Foo is Bar, Baz\` — what behavior is this contract inheriting, and from where), and the list of state variables (what does this contract actually remember between transactions). Those three things, read in about ten seconds, will orient you far faster than diving straight into function bodies — a habit every experienced Solidity engineer has, usually without consciously noticing they're doing it.
+
+### 1.12 What's next
+
+In the next chapter, we give \`HackerFactory\` its first piece of memory: a **state variable**. Right now, our contract is a fully valid but entirely stateless shell — deployable, addressable, but with nothing to remember. State variables are where the real cost model of blockchain development starts to bite (writing to contract storage is, gas-wise, one of the most expensive things you can do in the EVM — dramatically more expensive than an equivalent local variable in memory), and understanding exactly what you're paying for, and why, is the subject of Chapter 2.
+
+For now: write your pragma, declare your empty \`HackerFactory\` contract, and hit \`./check_answer\`. Welcome to the terminal.
+
+---
 
 **Your task:** the starter code already has the pragma. Declare an empty contract named exactly \`HackerFactory\`.`,
             starterCode: `pragma solidity >=0.5.0 <0.9.0;
