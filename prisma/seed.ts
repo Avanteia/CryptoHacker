@@ -627,15 +627,104 @@ contract HackerFactory {
             order: 2,
             title: "State variables",
             kind: "CODE",
-            instructions: `## Chapter 2 — State variables
+            instructions: `## Chapter 2 — State Variables: Giving Your Contract a Memory
 
-**State variables** are permanently stored in contract storage — on the blockchain itself. Every hacker's identity in our system starts with a DNA number.
+### 2.1 Why this is the single most expensive thing you'll learn in this course
 
-Declare an unsigned integer state variable called \`dna\` inside \`HackerFactory\`. Solidity's default \`uint\` is a 256-bit unsigned integer (alias for \`uint256\`).
+Of everything you'll write in Solidity, nothing costs more gas, line for line, than writing to contract **storage**. A single storage write from zero to a non-zero value currently costs 20,000 gas (per EIP-2929's post-Berlin-hardfork accounting, which we'll unpack below) — for comparison, a simple addition of two numbers in memory costs 3 gas. That's not a rounding difference; it's a difference of roughly four orders of magnitude. Almost every gas-optimization technique you'll learn later in this course — packing variables into shared slots, caching storage reads in memory, batching writes — exists entirely because of this one fact. So before we write our first state variable, it's worth understanding *why* storage is so disproportionately expensive, because that "why" will make every future optimization technique feel like common sense instead of an arbitrary trick.
+
+### 2.2 What "storage" physically is
+
+Every deployed contract has its own persistent key-value store, conceptually a giant array of **2^256 storage slots**, each slot holding exactly 32 bytes (256 bits). This is not stored the way a normal server's RAM or disk is — it's replicated identically across every single full node on the network. When you write to a storage slot, you're not writing to "a computer somewhere," you're asking **every node that will ever validate the Ethereum blockchain, forever, to store that value indefinitely**. That's the actual physical reality the gas cost is pricing: writing to storage is buying a permanent, globally-replicated commitment, and the fee schedule reflects that this is a fundamentally different (and vastly more expensive) resource than temporary computation.
+
+This is why Solidity forces such an explicit distinction between **storage** (permanent, expensive, replicated everywhere) and **memory** (temporary, cheap, exists only during the current function call, and disappears the instant that call finishes) — a distinction that simply doesn't exist in most general-purpose languages, because most general-purpose languages don't ask you to pay a globally-metered fee for persisting a value.
+
+### 2.3 Cold and warm storage access, and why your very first read of a slot costs more than the second
+
+Since the Berlin hardfork (April 2021, via EIP-2929), gas accounting for storage access got more granular in a way that's worth understanding even at this early stage, because it directly explains a pattern you'll adopt almost immediately: reading the same storage variable multiple times in one function is wasteful, and you should read it once into a local memory variable instead.
+
+- A **cold** storage slot access (the first time a given transaction touches that specific slot) costs 2,100 gas to *read*, and — as mentioned — 20,000 gas for a fresh (zero to non-zero) *write*, or 5,000 gas for an update to an already-non-zero value.
+- A **warm** access (any subsequent access to that same slot, within the same transaction) costs only 100 gas.
+
+The practical consequence: if a function reads the same state variable three times, you're paying for one cold read (2,100 gas) and two warm reads (100 gas each) if you access it directly each time — versus reading it once into a local variable (one cold read) and reusing that local copy for the rest of the function (each reuse costing only 3 gas, the cost of reading a memory-resident local variable). That's the difference between roughly 2,300 gas and roughly 2,106 gas for a trivial three-variable example — and the gap widens dramatically in loops, which we'll build in Chapter 10, where re-reading a storage variable on every iteration versus caching it once outside the loop can be the difference between a function that works and a function that runs out of gas entirely on a large enough input.
+
+You don't need to memorize these exact numbers. What you need to internalize, permanently, starting right now: **every storage read or write is a metered, non-trivial operation, and minimizing redundant storage access is one of the highest-leverage gas optimizations available to you, in almost every contract you'll ever write.**
+
+### 2.4 Declaring your first state variable
+
+With that cost model in mind, here's the actual syntax:
 
 \`\`\`solidity
 uint dna;
 \`\`\`
+
+Breaking this down:
+
+- \`uint\` is the **type** — an unsigned (non-negative) integer.
+- \`dna\` is the **identifier** — the name you're giving this piece of permanent storage.
+- The semicolon terminates the declaration, exactly as it did for the pragma statement in Chapter 1.
+
+Any variable declared **directly inside a contract body, outside of any function**, is automatically a state variable — stored permanently in that contract's storage, at whatever slot the compiler assigns it (we'll get to how slots get assigned, and how you can influence that assignment for gas savings, once we reach struct packing later in this track). This is different from a **local variable**, which you'll meet properly in a few chapters — a local variable is declared *inside* a function body and lives only in memory for the duration of that single function call.
+
+### 2.5 \`uint\` vs \`uint256\`: the same type, wearing two names
+
+You'll frequently see both \`uint\` and \`uint256\` used interchangeably in Solidity code, including in this course's own examples. That's not a mistake or an inconsistency — \`uint\` is literally defined as an **alias** for \`uint256\` (a 256-bit, i.e. 32-byte, unsigned integer) directly in the Solidity language specification. Writing \`uint dna;\` and writing \`uint256 dna;\` produce byte-for-byte identical compiled bytecode. There is no performance difference, no gas difference, no behavioral difference whatsoever between the two spellings.
+
+So why do both exist, and which should you use? This comes down to team convention more than any technical reason:
+
+- Some style guides (including OpenZeppelin's own contracts, which you'll use extensively starting in the Tokens track) prefer the explicit \`uint256\`, on the reasoning that being explicit about the exact bit-width leaves zero ambiguity for a reader — especially once you start working with other sizes like \`uint8\`, \`uint32\`, or \`uint128\` (which you'll meet in the Advanced Solidity track, used specifically for gas-efficient storage packing), where the bit-width genuinely matters and being in the habit of always stating it removes any doubt.
+- Other teams (and a lot of educational material, including most of this course, for brevity) use the shorter \`uint\`, on the reasoning that it's the overwhelmingly common default size and spelling it out every time is unnecessary noise.
+
+Neither convention is "more correct" — but **consistency within a single codebase matters far more than which one you pick**. A file that randomly mixes \`uint\` and \`uint256\` for no particular reason reads as sloppy to an experienced reviewer, even though it's functionally identical. Pick one per project and stick to it; we'll be reasonably consistent with plain \`uint\` throughout the free tracks of this course, and start being more explicit with sized integer types once gas optimization becomes the focus, later on.
+
+### 2.6 The other primitive value types you'll meet very soon (a preview)
+
+You'll only need \`uint\` for this specific chapter, but since state variables are the topic, it's worth previewing the small handful of other primitive ("value") types you'll be introduced to properly over the next few chapters, so \`uint\` doesn't feel like it exists in isolation:
+
+- **\`bool\`** — \`true\` or \`false\`. You'll use this properly in Chapter 9.
+- **\`address\`** — a 20-byte Ethereum address (either an externally-owned wallet or a deployed contract). Central to almost everything you'll build from here on — you already saw a hint of it with \`msg.sender\` in the Solidity Advanced I track.
+- **\`string\`** — UTF-8 encoded text, used (as you'll see two chapters from now) for things like a hacker's name.
+- **\`bytes32\`** — a fixed 32-byte sequence, often used for hashes (you already saw \`keccak256\` return one of these, cast to \`uint\`, back in the original DNA-generation chapter).
+- **Enums** — a way of defining a custom type with a fixed set of named values (e.g. \`enum Rank { ScriptKiddie, CodeRunner, WhiteHat, BountyHunter, EliteHacker }\`), which we'll use properly once we build out the gamification-adjacent parts of later contracts.
+
+Each of these gets its own dedicated, hands-on treatment later — we're naming them now so that when you see them appear, they feel like the next entry in a family you were already introduced to, not an unexplained new concept dropped in without warning.
+
+### 2.7 Default values: what \`dna\` actually equals before you ever set it
+
+Unlike many languages where an uninitialized variable is undefined behavior, garbage memory, or throws an error if accessed before assignment, **every Solidity state variable has a well-defined default value** the moment a contract is deployed, without you writing any explicit initialization code:
+
+- Every numeric type (\`uint\`, \`int\`, and all their sized variants) defaults to \`0\`.
+- \`bool\` defaults to \`false\`.
+- \`address\` defaults to the zero address, \`0x0000000000000000000000000000000000000000\` (you'll see this written as \`address(0)\` in code — you actually already used this exact check in the security-track reentrancy and minting chapters if you've gotten that far, or will, when you do).
+- \`string\` and \`bytes\` default to an empty value.
+- Arrays default to empty (length zero).
+- Mappings (which you'll meet in Chapter 5 of the Advanced I track, and again shortly in this same track) default to every possible key mapping to that value type's own default — meaning a \`mapping(address => uint)\` returns \`0\` for literally any address you've never explicitly set, rather than throwing an error or returning something like \`undefined\`.
+
+This matters mechanically and not just academically: it means \`hackers.length == 0\` (an empty array) and \`dna == 0\` (a freshly-declared, never-yet-assigned integer) are both true the instant your contract is deployed, with zero gas spent explicitly initializing them — the "zero" state is free, because it's simply what an all-zeros storage slot already represents before you've ever written to it. Writing an explicit \`= 0\` to a numeric state variable at declaration is legal but genuinely pointless — you'd be spending gas to set a slot to the value it already defaults to.
+
+### 2.8 The \`public\` keyword you haven't used yet, and why we didn't need it in Chapter 1
+
+You may notice that later versions of \`HackerFactory\` mark some state variables \`public\` — for example, you'll shortly see \`Hacker[] public hackers;\`. Marking a state variable \`public\` does something genuinely convenient: **the compiler automatically generates a getter function for it**, with the same name as the variable, letting any external caller read its current value without you writing that function by hand. \`uint public dna;\` effectively gives you a free \`function dna() external view returns (uint)\` for nothing — the compiler writes it for you.
+
+We're **not** marking \`dna\` public in this exact chapter, deliberately — it stays implicitly \`internal\` (the default visibility for a state variable when none is specified, meaning readable from within this contract and any contract that inherits from it, but not from outside). We'll revisit the tradeoffs of public versus internal state in a dedicated chapter once you've built enough of the contract to see a concrete case where hiding a variable from external read access actually matters (hint: it rarely matters for pure data-privacy reasons on a public blockchain — everything in storage is technically readable by anyone willing to query it directly via an RPC node, public visibility or not — but it matters a great deal for *interface design*, deciding what your contract's public "menu" of readable data should look like to another developer building against it).
+
+### 2.9 Instance variables in other languages: a useful (and slightly misleading) analogy
+
+If you've written Java, C++, Python, or really any object-oriented language before, a Solidity state variable will feel immediately familiar to an **instance field** — a piece of data that belongs to a particular object and persists across method calls on that same object. That analogy will serve you well for about 80% of your intuition here, and it's worth using deliberately as a bridge while you're new to this.
+
+But push on the analogy and it breaks in an instructive way: an instance field in Java lives in RAM, disappears the moment the process running it exits, and belongs to exactly one running instance of your program at a time. A Solidity state variable lives in globally-replicated, permanent, metered storage, belongs to a contract that has its own address and balance, and persists indefinitely regardless of whether any particular computer is "running" at the time — the Ethereum network as a whole is always "running," in a sense no single Java process ever is. Keep the analogy for the shape of the idea (data that persists across calls, tied to a particular deployed entity), but actively unlearn the assumption that it's cheap, private, or ephemeral the way an instance field usually is.
+
+### 2.10 Common mistakes at this exact stage
+
+- **Forgetting the type entirely and just writing \`dna;\`** — Solidity requires an explicit type for every declaration; there's no type inference for state variables the way there is in languages like TypeScript or modern C++ (\`auto\`/\`var\`). You'll get a clear parser error here, but it's worth knowing why the error exists: the compiler needs to know the exact byte-width of every state variable to correctly lay out your contract's storage slots.
+
+- **Declaring the variable inside a function by mistake.** If you accidentally write \`uint dna;\` inside a function body instead of directly inside the contract body, it becomes a **local variable** instead of a state variable — it won't persist between transactions, and (for value types like \`uint\`) it must be explicitly assigned a value before being read, or the compiler will flag it as unused/uninitialized in a way that state variables never trigger, since state variables always have that well-defined zero default we covered in section 2.7.
+
+- **Assuming \`uint\` can hold negative numbers.** It's unsigned — the "u" is doing real work in that name. Attempting to assign a negative literal to a \`uint\` is a compile-time type error, not a runtime one; the compiler catches this before your code ever reaches the chain. If you need negative numbers, you want the signed \`int\` (or \`int256\`) type instead — we won't need one in this contract, since DNA numbers, hacker levels, and XP are all naturally non-negative quantities, but it's worth knowing it exists for when you eventually do need it.
+
+### 2.11 What's next
+
+In the next chapter, we introduce **constants** — values fixed at compile time that never occupy a writable storage slot at all, sidestepping the entire cost model we just spent this whole chapter unpacking. You'll see \`dnaDigits\` and \`dnaModulus\` declared as \`constant\`, and understanding *why* a constant is fundamentally cheaper than a regular state variable — not just "a little cheaper," but **inlined directly into the bytecode, with zero storage slot consumed at all** — will make Chapter 3 click almost instantly, precisely because of everything you now understand about how expensive an ordinary state variable actually is.
 
 **Your task:** add a \`uint\` state variable named \`dna\` inside the contract.`,
             starterCode: `pragma solidity >=0.5.0 <0.9.0;
@@ -660,17 +749,72 @@ contract HackerFactory {
             order: 3,
             title: "Math operations & constants",
             kind: "CODE",
-            instructions: `## Chapter 3 — Digit limits
+            instructions: `## Chapter 3 — Constants: Values That Cost Nothing to Store
 
-Hacker DNA is a 16-digit number. We'll enforce that with a constant.
+### 3.1 The cheapest storage slot is the one you never allocate
 
-Add a state variable \`dnaDigits\` of type \`uint\`, set to \`16\`, and mark it \`constant\` (its value can never change and it doesn't use storage the way regular state vars do).
+Chapter 2 spent a lot of words convincing you that storage is expensive — a cold write costs 20,000 gas, and every subsequent read or write to that slot carries its own metered cost, forever, for as long as the contract exists. This chapter introduces the escape hatch for an entire category of values: ones that are **known at compile time and never change**. For those, Solidity gives you \`constant\`, and the gas savings aren't incremental — they're total. A constant occupies **zero storage slots**. Its value is baked directly into the contract's bytecode wherever it's referenced, the same way a literal number would be. Reading a constant costs the same tiny amount as reading any other inlined value in your code — nowhere near the 100-2,100 gas of even a *warm* storage read.
+
+### 3.2 Why our DNA numbers need a digit limit at all
+
+Hacker DNA, as introduced back in the original design of this contract, is meant to be a 16-digit number — enough entropy to make DNA values feel unique and "random-ish" for the purposes of this simulated game, without needing the full, enormous range of a 256-bit integer (which can represent numbers with **78 decimal digits** — vastly more than we need, and more than would even display sensibly in a UI). We enforce that 16-digit cap using modulo arithmetic: taking any generated hash and reducing it modulo 10^16 guarantees the result always falls between 0 and 9,999,999,999,999,999 — at most 16 digits, always.
+
+### 3.3 Declaring the digit-count constant
 
 \`\`\`solidity
 uint constant dnaDigits = 16;
 \`\`\`
 
-Then add a second constant, \`dnaModulus\`, equal to \`10 ** dnaDigits\` — this caps any DNA number to 16 digits via modulo.
+Let's name every piece of this:
+
+- \`uint\` — the type, exactly as you learned in Chapter 2.
+- \`constant\` — a modifier keyword marking this value as fixed at compile time and never writable again, by anyone, including the contract's own functions. Attempting to assign a new value to \`dnaDigits\` anywhere in your contract (\`dnaDigits = 17;\`) is a **compile-time error**, not a runtime revert — the compiler won't even let you build a contract that tries to mutate a constant, because doing so is a logical contradiction with what \`constant\` means.
+- \`dnaDigits\` — the identifier.
+- \`= 16\` — constants **must** be assigned a value at the point of declaration. This is different from a regular state variable, which (as you saw in Chapter 2) is perfectly happy sitting at its type's default value until you explicitly assign it later in some function. A constant has no "later" — it has no storage slot for a future write to target, so its value has to be nailed down immediately, in the same line where it's declared.
+
+### 3.4 Building the modulus: \`10 ** dnaDigits\`
+
+\`\`\`solidity
+uint constant dnaModulus = 10 ** dnaDigits;
+\`\`\`
+
+The \`**\` operator is Solidity's **exponentiation** operator — \`10 ** dnaDigits\` means "10 raised to the power of \`dnaDigits\`," i.e., 10^16. Because \`dnaDigits\` is itself a constant with a value fixed at compile time, the entire expression \`10 ** dnaDigits\` is also computable at compile time — the Solidity compiler evaluates it once, during compilation, and bakes the final numeric result (10,000,000,000,000,000) directly into the bytecode. There is no exponentiation happening on-chain, at runtime, ever, for this particular constant — you're not paying gas for a \`**\` operation each time a hacker is created; you're paying nothing at all, because the number was already computed before the contract was ever deployed.
+
+This is a subtly important point that's easy to gloss over: **constant expressions built from other constants remain fully computable at compile time**, and the compiler is smart enough to fold them down into a single literal value, no matter how many constants are chained together in the expression. This lets you write self-documenting, derived constants (\`dnaModulus\` clearly means "10 to the power of however many DNA digits we've configured," rather than a bare magic number \`10000000000000000\` that a future reader would have to reverse-engineer) with zero runtime cost for that readability.
+
+### 3.5 The modulo operator, and why it caps a number's digit count
+
+We haven't formally introduced \`%\` yet outside of its brief appearance in the very first version of \`_generateRandomDna\`, so let's be precise about what it does here. The **modulo operator**, \`%\`, returns the *remainder* after division. \`17 % 5\` equals \`2\`, because 5 goes into 17 three times (15), leaving a remainder of 2.
+
+Applied to our case: for any number \`n\`, \`n % dnaModulus\` (where \`dnaModulus\` is 10^16) always returns a value strictly less than \`dnaModulus\` itself — meaning at most 16 digits, by definition of what modulo does. This is exactly why the earlier \`_generateRandomDna\` function ends with \`return rand % dnaModulus;\` — no matter how enormous the raw \`keccak256\` hash is (and it's enormous — up to 78 digits, as a full 256-bit number), taking it modulo \`dnaModulus\` deterministically compresses it down into our desired 16-digit range, using the exact constant we're declaring in this chapter.
+
+### 3.6 \`constant\` vs a plain state variable you simply "promise not to change"
+
+A reasonable question at this point: why not just use a regular \`uint\` state variable for \`dnaDigits\`, and simply never write a function that changes it? Wouldn't the *behavior* be identical?
+
+Behaviorally, close — but not identical, and the differences matter:
+
+1. **Gas.** A regular state variable, even one you never intend to modify after deployment, still consumes a storage slot and still costs the full cold-read gas price (2,100 gas, per Chapter 2's breakdown) every single time any function reads it. A \`constant\` costs essentially nothing to read — it's inlined as a literal, the same as if you'd typed \`16\` directly in the code. Across potentially thousands or millions of calls to a popular contract over its lifetime, this genuinely adds up to meaningful real-world cost savings for your users.
+
+2. **Compiler-enforced immutability, not developer discipline.** "I promise not to write a function that changes this" is a convention that depends entirely on every future contributor to your codebase (including yourself, six months from now, tired, mid-refactor) remembering and respecting that promise. \`constant\` makes it a compiler-enforced guarantee instead — nobody can accidentally introduce a setter for a value that was never meant to be mutable, because the compiler will simply refuse to build the contract if they try.
+
+3. **Signal to readers.** When another developer (or an auditor, doing exactly the kind of security review we discussed as high-stakes back in the very first Crypto Fundamentals chapter of this course) sees \`uint constant dnaDigits = 16;\`, they immediately know, with total certainty and without needing to trace through every function in the contract, that this value is fixed forever. That's valuable information, conveyed instantly, that a regular state variable simply can't provide — a reader would have to manually verify no function anywhere in the (possibly very large) contract ever assigns to it.
+
+### 3.7 A note on \`constant\` versus \`immutable\` (a preview)
+
+You'll meet a close cousin of \`constant\` later in this course: the \`immutable\` keyword (introduced in Solidity 0.6.5), used for values that are fixed **once, at deployment time** (typically inside the constructor), rather than fixed at compile time. The distinction: \`constant\` values must be known when you *write* the code (like our \`16\`); \`immutable\` values can depend on something only known when the contract is *deployed* (like \`msg.sender\` inside a constructor, capturing "whoever deployed this specific instance" — a value that's different for every deployment, but never changes again after that one deployment completes). Both share the property of never being writable again after their one initialization point, and both avoid the ongoing storage-slot cost of a regular state variable. We're flagging \`immutable\` now, by name, purely so it doesn't feel like an unrelated surprise when it shows up — you'll get its full hands-on treatment once we reach a chapter where deployment-time-but-not-compile-time-known values actually come up.
+
+### 3.8 Common mistakes at this exact stage
+
+- **Forgetting the \`= value\` at declaration.** Since \`constant\` variables have no storage slot to be assigned later, omitting the initial value is a compile error, not a "starts at zero" situation the way an uninitialized regular state variable would behave. The compiler needs that value immediately, because there is no other point in the contract's lifecycle where it could ever be provided.
+
+- **Trying to compute a constant from something only known at runtime.** \`uint constant deployTime = block.timestamp;\` will not compile — \`block.timestamp\` (the timestamp of whatever block eventually mines this contract's deployment transaction) isn't known until deployment actually happens, which is fundamentally *after* compilation, not before. This is exactly the kind of case \`immutable\`, mentioned above, exists to handle instead — we'll get there.
+
+- **Assuming \`constant\` variables can be reassigned by owner-only functions "just this once."** No exception exists for this, by design, no matter how privileged the caller. If a value genuinely needs to be changeable under some governance or admin process later in a contract's life, it needs to be a regular (or specially-patterned, upgradeable) state variable from the start — retrofitting a \`constant\` into something mutable after the fact requires deploying an entirely new contract, since the old one's bytecode has that value permanently baked in.
+
+### 3.9 What's next
+
+With \`dnaDigits\` and \`dnaModulus\` in place, Chapter 4 introduces **structs** — a way to bundle multiple related pieces of data (a hacker's name *and* their DNA number, together) into one custom type, instead of tracking them as separate, easy-to-desynchronize variables. This is the first moment \`HackerFactory\` starts to feel like it's actually modeling something, rather than just holding a loose pile of individual numbers.
 
 **Your task:** declare both \`dnaDigits\` and \`dnaModulus\` as shown.`,
             starterCode: `pragma solidity >=0.5.0 <0.9.0;
