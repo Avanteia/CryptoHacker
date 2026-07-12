@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { razorpay } from "@/lib/razorpay";
+import { getRazorpay } from "@/lib/razorpay";
 import type { Plan } from "@prisma/client";
 
 export async function POST(req: Request) {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "PLAN_NOT_CONFIGURED" }, { status: 500 });
   }
 
-  const rpSubscription = await razorpay.subscriptions.create({
+  const rpSubscription = await getRazorpay().subscriptions.create({
     plan_id: razorpayPlan.razorpayId,
     customer_notify: 1,
     total_count: plan === "PRO_MONTHLY" ? 120 : 10,

@@ -4,7 +4,7 @@
  * checkout can reference them. Run with `npm run setup:razorpay`.
  */
 import { PrismaClient } from "@prisma/client";
-import { razorpay, PLAN_CONFIG } from "../src/lib/razorpay";
+import { getRazorpay, PLAN_CONFIG } from "../src/lib/razorpay";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,7 @@ async function main() {
       continue;
     }
 
-    const created = await razorpay.plans.create({
+    const created = await getRazorpay().plans.create({
       period: config.period,
       interval: config.intervalCount,
       item: {
