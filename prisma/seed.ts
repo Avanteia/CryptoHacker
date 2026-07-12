@@ -626,6 +626,320 @@ contract HackerFactory {
             ],
             xp: 30,
           },
+          {
+            order: 9,
+            title: "Booleans and if/else",
+            kind: "CODE",
+            instructions: `## Chapter 9 — Rank gating with if/else
+
+Solidity has a plain \`bool\` type and standard \`if\`/\`else\` control flow, exactly like most C-family languages.
+
+Let's gate an action behind a hacker's level. Add a function that returns whether a hacker (by DNA-derived level, passed directly for simplicity here) is allowed to run an exploit:
+
+\`\`\`solidity
+function canRunExploit(uint _level) public pure returns (bool) {
+  if (_level >= 5) {
+    return true;
+  } else {
+    return false;
+  }
+}
+\`\`\`
+
+**Your task:** implement \`canRunExploit\` exactly as shown — a \`uint\` in, a \`bool\` out, using \`if\`/\`else\`.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  // implement canRunExploit here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  function canRunExploit(uint _level) public pure returns (bool) {
+    if (_level >= 5) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+`,
+            hint: "`function canRunExploit(uint _level) public pure returns (bool) { if (_level >= 5) { return true; } else { return false; } }`",
+            validationRules: [
+              { type: "regex", pattern: "function\\s+canRunExploit\\s*\\(\\s*uint\\s+_level\\s*\\)\\s+public\\s+pure\\s+returns\\s*\\(\\s*bool\\s*\\)", message: "Function signature must be `function canRunExploit(uint _level) public pure returns (bool)`." },
+              { type: "contains", pattern: "if (_level >= 5)", message: "Check `if (_level >= 5)`." },
+              { type: "contains", pattern: "return true;", message: "Return `true` in the `if` branch." },
+              { type: "contains", pattern: "return false;", message: "Return `false` in the `else` branch." },
+            ],
+            xp: 20,
+          },
+          {
+            order: 10,
+            title: "for loops",
+            kind: "CODE",
+            instructions: `## Chapter 10 — Counting hackers by name prefix
+
+Solidity supports standard \`for\` loops. They're common when iterating over arrays in storage or memory — though be careful with unbounded loops over storage arrays in production code, since gas cost scales with array length (we'll cover that risk properly in the security track).
+
+Add a helper that counts how many hackers exist with DNA below a threshold, given an array passed in memory:
+
+\`\`\`solidity
+function countBelowDna(uint[] memory _dnas, uint _threshold) public pure returns (uint) {
+  uint count = 0;
+  for (uint i = 0; i < _dnas.length; i++) {
+    if (_dnas[i] < _threshold) {
+      count++;
+    }
+  }
+  return count;
+}
+\`\`\`
+
+**Your task:** implement \`countBelowDna\` exactly as shown.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  // implement countBelowDna here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  function countBelowDna(uint[] memory _dnas, uint _threshold) public pure returns (uint) {
+    uint count = 0;
+    for (uint i = 0; i < _dnas.length; i++) {
+      if (_dnas[i] < _threshold) {
+        count++;
+      }
+    }
+    return count;
+  }
+}
+`,
+            hint: "Loop with `for (uint i = 0; i < _dnas.length; i++)`, and inside, `if (_dnas[i] < _threshold) { count++; }`.",
+            validationRules: [
+              { type: "regex", pattern: "function\\s+countBelowDna\\s*\\(\\s*uint\\[\\]\\s+memory\\s+_dnas\\s*,\\s*uint\\s+_threshold\\s*\\)\\s+public\\s+pure\\s+returns\\s*\\(\\s*uint\\s*\\)", message: "Function signature must be `function countBelowDna(uint[] memory _dnas, uint _threshold) public pure returns (uint)`." },
+              { type: "regex", pattern: "for\\s*\\(\\s*uint\\s+i\\s*=\\s*0\\s*;\\s*i\\s*<\\s*_dnas\\.length\\s*;\\s*i\\+\\+\\s*\\)", message: "Loop with `for (uint i = 0; i < _dnas.length; i++)`." },
+              { type: "contains", pattern: "if (_dnas[i] < _threshold)", message: "Check `if (_dnas[i] < _threshold)` inside the loop." },
+              { type: "contains", pattern: "count++;", message: "Increment `count++;` when the condition matches." },
+            ],
+            xp: 20,
+          },
+          {
+            order: 11,
+            title: "while loops",
+            kind: "CODE",
+            instructions: `## Chapter 11 — while loops
+
+\`while\` loops run as long as a condition holds — useful when the number of iterations isn't known ahead of time (unlike a \`for\` loop over a fixed-length array).
+
+Write a function that keeps halving a number until it drops below 1, counting the steps — a rough "how many times can this DNA be split" utility:
+
+\`\`\`solidity
+function halvingSteps(uint _n) public pure returns (uint) {
+  uint steps = 0;
+  uint n = _n;
+  while (n > 1) {
+    n = n / 2;
+    steps++;
+  }
+  return steps;
+}
+\`\`\`
+
+**Your task:** implement \`halvingSteps\` exactly as shown.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  // implement halvingSteps here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  function halvingSteps(uint _n) public pure returns (uint) {
+    uint steps = 0;
+    uint n = _n;
+    while (n > 1) {
+      n = n / 2;
+      steps++;
+    }
+    return steps;
+  }
+}
+`,
+            hint: "`while (n > 1) { n = n / 2; steps++; }` — remember to copy `_n` into a local `n` first since you can't reassign a memory-passed value parameter... actually you can, but copying makes intent clearer.",
+            validationRules: [
+              { type: "regex", pattern: "function\\s+halvingSteps\\s*\\(\\s*uint\\s+_n\\s*\\)\\s+public\\s+pure\\s+returns\\s*\\(\\s*uint\\s*\\)", message: "Function signature must be `function halvingSteps(uint _n) public pure returns (uint)`." },
+              { type: "contains", pattern: "while (n > 1)", message: "Loop with `while (n > 1)`." },
+              { type: "contains", pattern: "n = n / 2;", message: "Halve `n` each iteration: `n = n / 2;`" },
+              { type: "contains", pattern: "steps++;", message: "Increment `steps++;` each iteration." },
+            ],
+            xp: 20,
+          },
+          {
+            order: 12,
+            title: "Data locations: memory, storage, calldata",
+            kind: "QUIZ",
+            instructions: `## Chapter 12 — Where does data actually live?
+
+Solidity requires you to be explicit about **where** complex types (arrays, structs, strings, mappings) live, because that determines cost and mutability:
+
+- **storage** — permanent, on-chain, expensive to write. State variables are storage by default.
+- **memory** — temporary, exists only during the function call, cheaper. Function parameters/locals for complex types must specify this (or calldata).
+- **calldata** — like memory, but read-only and even cheaper — used for external function parameters that are never modified.
+
+Assigning a \`storage\` reference to a local variable creates an **alias** — mutating it mutates the original state. Assigning a \`memory\` value copies it — mutating the copy does nothing to the original.
+
+**Question:** If a function does \`Hacker storage h = hackers[0]; h.name = "neo";\`, what happens to \`hackers[0]\` in contract storage?`,
+            quizOptions: [
+              "Nothing — h is a separate copy",
+              "hackers[0].name is permanently changed to \"neo\", since h is an alias to the same storage slot",
+              "It throws a compile error",
+              "It only changes for the duration of the transaction",
+            ],
+            quizAnswer: "hackers[0].name is permanently changed to \"neo\", since h is an alias to the same storage slot",
+            xp: 25,
+          },
+          {
+            order: 13,
+            title: "Function visibility deep dive",
+            kind: "QUIZ",
+            instructions: `## Chapter 13 — public, external, internal, private
+
+Four visibility levels control who can call a function:
+
+- **public** — callable from anywhere: other functions in this contract, derived contracts, and external accounts/contracts.
+- **external** — callable only from *outside* the contract (other contracts, transactions) — slightly cheaper for functions with large array/struct arguments since they read straight from calldata.
+- **internal** — callable from this contract and contracts that inherit from it, but not from outside.
+- **private** — callable only from within this exact contract, not even by child contracts.
+
+We used \`private\` for \`_createHacker\` and \`_generateRandomDna\` specifically so nothing outside — not even a future subclass — could call them directly and bypass \`createRandomHacker\`'s validation.
+
+**Question:** Why did we mark the DNA-generation and hacker-creation helpers \`private\` instead of \`public\`?`,
+            quizOptions: [
+              "private functions use less gas than public ones",
+              "To force all hacker creation through createRandomHacker, so its require() guards (like the name-taken check) can't be bypassed by calling the helpers directly",
+              "Solidity requires helper functions to be private",
+              "private functions can't be tested",
+            ],
+            quizAnswer: "To force all hacker creation through createRandomHacker, so its require() guards (like the name-taken check) can't be bypassed by calling the helpers directly",
+            xp: 20,
+          },
+          {
+            order: 14,
+            title: "Array operations: push, pop, delete",
+            kind: "CODE",
+            instructions: `## Chapter 14 — Retiring a hacker
+
+Dynamic storage arrays support \`.push()\` (append), \`.pop()\` (remove the last element and shrink length), and \`delete arr[i]\` (reset that slot to its default value **without** shrinking the array or shifting later elements).
+
+Add a function that "retires" the most recently created hacker by popping them off the roster:
+
+\`\`\`solidity
+function retireLastHacker() public {
+  require(hackers.length > 0);
+  hackers.pop();
+}
+\`\`\`
+
+**Your task:** implement \`retireLastHacker\` exactly as shown, guarding against popping an empty array.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  struct Hacker { string name; uint dna; }
+  Hacker[] public hackers;
+
+  // implement retireLastHacker here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  struct Hacker { string name; uint dna; }
+  Hacker[] public hackers;
+
+  function retireLastHacker() public {
+    require(hackers.length > 0);
+    hackers.pop();
+  }
+}
+`,
+            hint: "`require(hackers.length > 0);` then `hackers.pop();`",
+            validationRules: [
+              { type: "regex", pattern: "function\\s+retireLastHacker\\s*\\(\\s*\\)\\s+public", message: "Function signature must be `function retireLastHacker() public`." },
+              { type: "contains", pattern: "require(hackers.length > 0);", message: "Guard with `require(hackers.length > 0);` before popping." },
+              { type: "contains", pattern: "hackers.pop();", message: "Remove the last hacker with `hackers.pop();`" },
+              { type: "order", before: "require(hackers.length > 0);", after: "hackers.pop();", message: "Check the array isn't empty before popping." },
+            ],
+            xp: 20,
+          },
+          {
+            order: 15,
+            title: "Fixed-size vs dynamic arrays",
+            kind: "QUIZ",
+            instructions: `## Chapter 15 — uint[5] vs uint[]
+
+Solidity has two array flavors:
+
+- **Fixed-size**: \`uint[5] scores;\` — length baked in at compile time, can't grow or shrink, slightly cheaper gas since the size never needs to be tracked.
+- **Dynamic**: \`uint[] scores;\` — length can change at runtime via \`push\`/\`pop\`, but the EVM needs to track that length alongside the data.
+
+We used \`Hacker[] public hackers\` (dynamic) because we don't know ahead of time how many hackers will ever be created — a fixed-size array would cap the roster permanently at whatever size we chose.
+
+**Question:** When would a fixed-size array be the better choice over a dynamic one?`,
+            quizOptions: [
+              "Never — dynamic arrays are strictly better",
+              "When the number of elements is known and constant for the life of the contract (e.g. \"top 3 leaderboard slots\"), avoiding the overhead of length tracking",
+              "Fixed-size arrays are required for structs",
+              "Only when storing strings",
+            ],
+            quizAnswer: "When the number of elements is known and constant for the life of the contract (e.g. \"top 3 leaderboard slots\"), avoiding the overhead of length tracking",
+            xp: 20,
+          },
+          {
+            order: 16,
+            title: "Nested mappings",
+            kind: "CODE",
+            instructions: `## Chapter 16 — Tracking exploits per hacker
+
+Mappings can nest, letting you model relationships like "for each hacker, for each exploit ID, has it been used?"
+
+\`\`\`solidity
+mapping(uint => mapping(uint => bool)) public exploitUsed;
+
+function useExploit(uint _hackerId, uint _exploitId) public {
+  exploitUsed[_hackerId][_exploitId] = true;
+}
+\`\`\`
+
+**Your task:** declare the nested mapping and implement \`useExploit\` exactly as shown.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  // declare the nested mapping here
+
+  // implement useExploit here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract HackerFactory {
+  mapping(uint => mapping(uint => bool)) public exploitUsed;
+
+  function useExploit(uint _hackerId, uint _exploitId) public {
+    exploitUsed[_hackerId][_exploitId] = true;
+  }
+}
+`,
+            hint: "`mapping(uint => mapping(uint => bool)) public exploitUsed;` then `exploitUsed[_hackerId][_exploitId] = true;`",
+            validationRules: [
+              { type: "regex", pattern: "mapping\\s*\\(\\s*uint\\s*=>\\s*mapping\\s*\\(\\s*uint\\s*=>\\s*bool\\s*\\)\\s*\\)\\s+public\\s+exploitUsed\\s*;", message: "Declare `mapping(uint => mapping(uint => bool)) public exploitUsed;`" },
+              { type: "contains", pattern: "exploitUsed[_hackerId][_exploitId] = true;", message: "Set `exploitUsed[_hackerId][_exploitId] = true;`" },
+            ],
+            xp: 25,
+          },
         ],
       },
     ],
@@ -1016,6 +1330,268 @@ contract HackerFactory is Ownable {
               { type: "contains", pattern: `import "./ownable.sol";`, message: `Add \`import "./ownable.sol";\` below the pragma.` },
             ],
             xp: 20,
+          },
+          {
+            order: 7,
+            title: "Abstract contracts",
+            kind: "CODE",
+            instructions: `## Chapter 7 — Defining a shape without an implementation
+
+An **abstract** contract declares at least one function without a body — it can't be deployed on its own, only inherited from. It's the middle ground between a full interface (no implementation at all) and a normal contract (everything implemented).
+
+\`\`\`solidity
+abstract contract ExploitBase {
+  function severity() public view virtual returns (uint);
+
+  function isCritical() public view returns (bool) {
+    return severity() >= 9;
+  }
+}
+\`\`\`
+
+Notice \`isCritical\` **is** implemented and calls the not-yet-implemented \`severity()\` — child contracts only need to fill in \`severity\`, and get \`isCritical\` for free.
+
+**Your task:** declare \`abstract contract ExploitBase\` exactly as shown, with both functions.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+// declare ExploitBase here
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+abstract contract ExploitBase {
+  function severity() public view virtual returns (uint);
+
+  function isCritical() public view returns (bool) {
+    return severity() >= 9;
+  }
+}
+`,
+            hint: "`abstract contract ExploitBase { function severity() public view virtual returns (uint); function isCritical() public view returns (bool) { return severity() >= 9; } }`",
+            validationRules: [
+              { type: "regex", pattern: "abstract\\s+contract\\s+ExploitBase\\s*\\{", message: "Declare `abstract contract ExploitBase {`." },
+              { type: "regex", pattern: "function\\s+severity\\s*\\(\\s*\\)\\s+public\\s+view\\s+virtual\\s+returns\\s*\\(\\s*uint\\s*\\)\\s*;", message: "Declare the unimplemented `function severity() public view virtual returns (uint);`." },
+              { type: "contains", pattern: "return severity() >= 9;", message: "Implement `isCritical` returning `severity() >= 9`." },
+            ],
+            xp: 30,
+          },
+          {
+            order: 8,
+            title: "Overriding inherited functions",
+            kind: "CODE",
+            instructions: `## Chapter 8 — override
+
+To fill in a \`virtual\` function from a parent (or abstract) contract, a child marks its version \`override\`:
+
+\`\`\`solidity
+contract BufferOverflowExploit is ExploitBase {
+  function severity() public view override returns (uint) {
+    return 10;
+  }
+}
+\`\`\`
+
+Both \`virtual\` (on the parent) and \`override\` (on the child) are required — Solidity won't let you silently shadow a function by accident.
+
+**Your task:** declare \`contract BufferOverflowExploit is ExploitBase\` and override \`severity\` to return \`10\`, exactly as shown. Assume \`ExploitBase\` (from the previous chapter) already exists.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+// declare BufferOverflowExploit here
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract BufferOverflowExploit is ExploitBase {
+  function severity() public view override returns (uint) {
+    return 10;
+  }
+}
+`,
+            hint: "`contract BufferOverflowExploit is ExploitBase { function severity() public view override returns (uint) { return 10; } }`",
+            validationRules: [
+              { type: "regex", pattern: "contract\\s+BufferOverflowExploit\\s+is\\s+ExploitBase\\s*\\{", message: "Declare `contract BufferOverflowExploit is ExploitBase {`." },
+              { type: "regex", pattern: "function\\s+severity\\s*\\(\\s*\\)\\s+public\\s+view\\s+override\\s+returns\\s*\\(\\s*uint\\s*\\)", message: "Override with `function severity() public view override returns (uint)`." },
+              { type: "contains", pattern: "return 10;", message: "Return `10`." },
+            ],
+            xp: 30,
+          },
+          {
+            order: 9,
+            title: "Custom errors",
+            kind: "CODE",
+            instructions: `## Chapter 9 — Cheaper, richer reverts
+
+\`require(condition)\` with no message reverts with no useful info; \`require(condition, "some string")\` is more helpful but string reverts are surprisingly gas-expensive to store in bytecode. Since Solidity 0.8.4, **custom errors** give you named, parameterized reverts at a fraction of the gas cost:
+
+\`\`\`solidity
+error NotAuthorized(address caller, address expected);
+
+function restrictedAction(address expected) external view {
+  if (msg.sender != expected) {
+    revert NotAuthorized(msg.sender, expected);
+  }
+}
+\`\`\`
+
+Callers (and block explorers) can decode \`NotAuthorized\` and see exactly which two addresses mismatched — far more useful than a bare string.
+
+**Your task:** declare \`error NotAuthorized(address caller, address expected);\` and implement \`restrictedAction\` exactly as shown.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract AccessControlled {
+  // declare the error here
+
+  // implement restrictedAction here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract AccessControlled {
+  error NotAuthorized(address caller, address expected);
+
+  function restrictedAction(address expected) external view {
+    if (msg.sender != expected) {
+      revert NotAuthorized(msg.sender, expected);
+    }
+  }
+}
+`,
+            hint: "`error NotAuthorized(address caller, address expected);` then `if (msg.sender != expected) { revert NotAuthorized(msg.sender, expected); }`",
+            validationRules: [
+              { type: "regex", pattern: "error\\s+NotAuthorized\\s*\\(\\s*address\\s+caller\\s*,\\s*address\\s+expected\\s*\\)\\s*;", message: "Declare `error NotAuthorized(address caller, address expected);`" },
+              { type: "contains", pattern: "if (msg.sender != expected)", message: "Check `if (msg.sender != expected)`." },
+              { type: "contains", pattern: "revert NotAuthorized(msg.sender, expected);", message: "Revert with `revert NotAuthorized(msg.sender, expected);`" },
+            ],
+            xp: 30,
+          },
+          {
+            order: 10,
+            title: "try/catch on external calls",
+            kind: "CODE",
+            instructions: `## Chapter 10 — Handling a call that might revert
+
+Calling another contract's function can fail (it might revert). Normally that failure bubbles up and reverts your transaction too — but \`try\`/\`catch\` lets you handle it gracefully instead, which matters when you don't want one bad external dependency to break your whole flow.
+
+\`\`\`solidity
+interface Oracle {
+  function getPrice() external view returns (uint);
+}
+
+function safeGetPrice(address oracleAddr) public view returns (uint, bool) {
+  try Oracle(oracleAddr).getPrice() returns (uint price) {
+    return (price, true);
+  } catch {
+    return (0, false);
+  }
+}
+\`\`\`
+
+Note: \`try\`/\`catch\` only wraps **external** calls (contract calls or contract creation) — it cannot catch a plain \`require\` failure inside the current function.
+
+**Your task:** declare the \`Oracle\` interface (at file scope, above the contract — interfaces can't be nested inside a contract body) and implement \`safeGetPrice\` exactly as shown.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+// declare the Oracle interface here
+
+contract PriceConsumer {
+  // implement safeGetPrice here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+interface Oracle {
+  function getPrice() external view returns (uint);
+}
+
+contract PriceConsumer {
+  function safeGetPrice(address oracleAddr) public view returns (uint, bool) {
+    try Oracle(oracleAddr).getPrice() returns (uint price) {
+      return (price, true);
+    } catch {
+      return (0, false);
+    }
+  }
+}
+`,
+            hint: "Declare `interface Oracle { function getPrice() external view returns (uint); }` above the contract, then inside `safeGetPrice`: `try Oracle(oracleAddr).getPrice() returns (uint price) { return (price, true); } catch { return (0, false); }`",
+            validationRules: [
+              { type: "regex", pattern: "interface\\s+Oracle\\s*\\{[\\s\\S]*function\\s+getPrice\\s*\\(\\s*\\)\\s+external\\s+view\\s+returns\\s*\\(\\s*uint\\s*\\)\\s*;", message: "Declare the `Oracle` interface with `getPrice() external view returns (uint)`." },
+              { type: "contains", pattern: "try Oracle(oracleAddr).getPrice() returns (uint price) {", message: "Wrap the call in `try Oracle(oracleAddr).getPrice() returns (uint price) {`." },
+              { type: "contains", pattern: "return (price, true);", message: "On success, `return (price, true);`" },
+              { type: "contains", pattern: "} catch {", message: "Add a `catch` block." },
+              { type: "contains", pattern: "return (0, false);", message: "On failure, `return (0, false);`" },
+            ],
+            xp: 35,
+          },
+          {
+            order: 11,
+            title: "receive() and fallback()",
+            kind: "CODE",
+            instructions: `## Chapter 11 — Accepting plain ETH transfers
+
+A contract needs a special function to accept plain ETH sent with no function call data:
+
+- \`receive() external payable { ... }\` — runs when ETH is sent with empty calldata.
+- \`fallback() external payable { ... }\` — runs when calldata doesn't match any function (and there's no \`receive\`, or calldata is non-empty).
+
+Without either, a plain \`address(contract).transfer(...)\` to your contract simply reverts.
+
+\`\`\`solidity
+event Deposit(address sender, uint amount);
+
+receive() external payable {
+  emit Deposit(msg.sender, msg.value);
+}
+\`\`\`
+
+**Your task:** declare the \`Deposit\` event and the \`receive()\` function exactly as shown.`,
+            starterCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract Vault {
+  // declare the Deposit event here
+
+  // implement receive() here
+}
+`,
+            solutionCode: `pragma solidity >=0.5.0 <0.9.0;
+
+contract Vault {
+  event Deposit(address sender, uint amount);
+
+  receive() external payable {
+    emit Deposit(msg.sender, msg.value);
+  }
+}
+`,
+            hint: "`event Deposit(address sender, uint amount);` then `receive() external payable { emit Deposit(msg.sender, msg.value); }`",
+            validationRules: [
+              { type: "regex", pattern: "event\\s+Deposit\\s*\\(\\s*address\\s+sender\\s*,\\s*uint\\s+amount\\s*\\)\\s*;", message: "Declare `event Deposit(address sender, uint amount);`" },
+              { type: "regex", pattern: "receive\\s*\\(\\s*\\)\\s+external\\s+payable\\s*\\{", message: "Declare `receive() external payable {`." },
+              { type: "contains", pattern: "emit Deposit(msg.sender, msg.value);", message: "Emit `Deposit(msg.sender, msg.value);` inside `receive()`." },
+            ],
+            xp: 25,
+          },
+          {
+            order: 12,
+            title: "transfer vs send vs call for sending ETH",
+            kind: "QUIZ",
+            instructions: `## Chapter 12 — Three ways to send ETH, one right answer
+
+Solidity gives you three ways to send ETH from a contract:
+
+- \`payable(to).transfer(amount)\` — sends, forwards a fixed 2300 gas stipend, **reverts automatically** on failure. Used to be the default recommendation.
+- \`payable(to).send(amount)\` — same 2300 gas stipend, but returns a \`bool\` instead of reverting — easy to forget to check, silently losing funds if ignored.
+- \`(bool sent, ) = payable(to).call{value: amount}("")\` — forwards **all remaining gas**, returns a \`bool\` you must check, and is now the **recommended** approach.
+
+Why the shift away from \`transfer\`/\`send\`? Their fixed 2300 gas stipend assumes the recipient is a simple wallet. If the recipient is a contract with a \`receive()\` function that does *any* meaningful work (even emitting an event), 2300 gas isn't enough and the transfer fails — breaking your contract's interaction with other contracts unpredictably as gas costs for EVM opcodes change over time.
+
+**Question:** Why is \`.call{value: amount}("")\` now recommended over \`.transfer()\` for sending ETH?`,
+            quizOptions: [
+              "call() is cheaper in absolute gas cost",
+              "transfer()'s fixed 2300 gas stipend can be insufficient for contract recipients doing real work in receive(), causing unexpected failures — call() forwards all available gas instead",
+              "transfer() was removed from Solidity",
+              "call() automatically retries on failure",
+            ],
+            quizAnswer: "transfer()'s fixed 2300 gas stipend can be insufficient for contract recipients doing real work in receive(), causing unexpected failures — call() forwards all available gas instead",
+            xp: 25,
           },
         ],
       },
